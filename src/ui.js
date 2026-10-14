@@ -14,11 +14,29 @@
     textarea.addEventListener("keydown", (e) => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();save();} e.stopPropagation(); });
     textarea.addEventListener("click", (e) => e.stopPropagation());
     actions.appendChild(clearBtn); actions.appendChild(doneBtn); popover.appendChild(textarea); popover.appendChild(actions);
-    const r = btn.getBoundingClientRect();
-    popover.style.top = (r.bottom+6)+"px"; popover.style.right = Math.max(8, window.innerWidth-r.right)+"px";
-    mountSelectorSurface(popover); activePopover = popover; textarea.focus();
+    mountSelectorSurface(popover); activePopover = popover; activePopoverAnchor = btn;
+    positionAnnotationPopover(); textarea.focus();
   }
-  function removeAnnotationPopover() { if (activePopover) { activePopover.remove(); activePopover = null; } }
+  function positionAnnotationPopover() {
+    if (!activePopover || !activePopoverAnchor) return;
+    const viewport = window.visualViewport;
+    const width = viewport ? viewport.width : window.innerWidth;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const leftEdge = (viewport ? viewport.offsetLeft : 0) + 8;
+    const topEdge = (viewport ? viewport.offsetTop : 0) + 8;
+    const rightEdge = leftEdge + width - 16;
+    const bottomEdge = topEdge + height - 16;
+    activePopover.style.maxWidth = Math.max(0, width - 16) + "px";
+    activePopover.style.maxHeight = Math.max(0, height - 16) + "px";
+    const anchor = activePopoverAnchor.getBoundingClientRect();
+    const size = activePopover.getBoundingClientRect();
+    const below = anchor.bottom + 6, above = anchor.top - size.height - 6;
+    const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+    const top = below + size.height <= bottomEdge ? below : above >= topEdge ? above : clamp(below, topEdge, bottomEdge - size.height);
+    activePopover.style.top = top + "px";
+    activePopover.style.left = clamp(anchor.right - size.width, leftEdge, rightEdge - size.width) + "px";
+  }
+  function removeAnnotationPopover() { if (activePopover) activePopover.remove(); activePopover = null; activePopoverAnchor = null; }
 
   // ── Settings panel ──────────────────────────────────────────
   const GEAR_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';

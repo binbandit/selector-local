@@ -1,6 +1,6 @@
 {
   "name": "selector-local",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "scripts": {
     "build": "node scripts/build.js && bun scripts/build-extension.ts && bun run package",

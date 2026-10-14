@@ -1,6 +1,7 @@
 /* ── Reset ───────────────────────────────────────────────── */
 .ai-editor-root,
 .ai-editor-root * {
+  color-scheme: only light;
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   line-height: 1.4;
@@ -39,6 +40,7 @@
 /* Every Selector surface sits at the browser's maximum author-layer depth.
    Internal order is controlled by insertion order inside the layer host. */
 .ai-editor-root {
+  color: #1a1a1a;
   z-index: 2147483647 !important;
 }
 
@@ -224,6 +226,9 @@
   position: fixed;
   z-index: 2147483646;
   width: 240px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 10px;
@@ -233,7 +238,10 @@
 }
 
 .ai-editor-annotate-input {
+  display: block;
   width: 100%;
+  min-height: 0;
+  margin: 0;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
   padding: 6px 8px;

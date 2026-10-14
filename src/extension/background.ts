@@ -145,7 +145,8 @@ async function handle(request: Request, sender: chrome.runtime.MessageSender): P
         Object.assign(window, { __SELECTOR_LOCAL_CONFIG__: value });
       }, args: [config] });
       await chrome.scripting.removeCSS({ target: { tabId }, files: ["editor.css"], origin: "USER" });
-      await chrome.scripting.insertCSS({ target: { tabId }, files: ["editor.css"], origin: "USER" });
+      await chrome.scripting.removeCSS({ target: { tabId }, files: ["editor.css"], origin: "AUTHOR" });
+      await chrome.scripting.insertCSS({ target: { tabId }, files: ["editor.css"], origin: "AUTHOR" });
       await chrome.scripting.executeScript({ target: { tabId }, world: "MAIN", files: ["host.js", "vendor/editor.js"] });
       return null;
     }

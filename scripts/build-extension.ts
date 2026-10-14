@@ -12,4 +12,5 @@ await cp("docs/INSTALL.md", `${output}/INSTALL.md`);
 await build({ entryPoints: ["src/extension/background.ts", "src/extension/bridge.ts", "src/extension/host.ts", "src/extension/options.ts"], outdir: output, bundle: true, format: "iife", target: "chrome120", tsconfig: "tsconfig.json", minify: false });
 await build({ entryPoints: ["src/extension/demo.ts"], outfile: "dist/demo.js", bundle: true, format: "iife", target: "chrome120", tsconfig: "tsconfig.json" });
 await cp("tests/fixtures/native.html", "dist/native.html");
+await cp("tests/fixtures/appearance.html", "dist/appearance.html");
 console.log(`Extension ready: ${output}`);

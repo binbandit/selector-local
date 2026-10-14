@@ -147,6 +147,7 @@
   const selOverlays = new Map(), annotations = new Map(), listeners = [];
   let domObserver = null;
   let dragState = null, wasJustDragging = false, activePopover = null;
+  let activePopoverAnchor = null;
   const selectionHistory = [];
   let screenshotBtn = null, saveBtn = null, pendingScreenshotSave = null, settingsOpen = false, settingsPanel = null;
   let revPanel = null, pendingGenPrompt = null, pendingResultCopyKey = null, revStream = null;
@@ -169,10 +170,14 @@
     on(document, "keydown", handleKeyDown, true);
     let repositionRaf = false;
     const scheduleReposition = () => {
-      if (!repositionRaf) { repositionRaf = true; requestAnimationFrame(() => { positionAllOverlays(); repositionRaf = false; }); }
+      if (!repositionRaf) { repositionRaf = true; requestAnimationFrame(() => { positionAllOverlays(); positionAnnotationPopover(); repositionRaf = false; }); }
     };
     on(window, "scroll", scheduleReposition, true);
     on(window, "resize", scheduleReposition, false);
+    if (window.visualViewport) {
+      on(window.visualViewport, "resize", scheduleReposition, false);
+      on(window.visualViewport, "scroll", scheduleReposition, false);
+    }
     // SPA routes often replace large DOM subtrees without reloading this core.
     // Keep newly-added page elements addressable for click, marquee and undo.
     try {

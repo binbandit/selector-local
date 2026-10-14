@@ -4,6 +4,7 @@ import { buildTestLocators } from "@/extension/locators";
 import { DEFAULT_SETTINGS } from "@/extension/protocol";
 
 const source = await Bun.file("dist/assets/editor.js").text();
+const styles = await Bun.file("assets/editor.css").text();
 let browser: Window;
 const copies: string[] = [];
 const saved: unknown[] = [];
@@ -34,6 +35,26 @@ function click(selector: string) {
 async function copy() { click(".ai-editor-copy-btn"); await Bun.sleep(5); return copies.at(-1) || ""; }
 
 describe("bundled picker interaction", () => {
+  test("floating controls keep their light palette when the page requests dark native controls", () => {
+    browser.document.documentElement.style.colorScheme = "dark";
+    const sheet = browser.document.createElement("style"); sheet.textContent = styles; browser.document.head.appendChild(sheet);
+    click("#title"); click(".ai-editor-annotate-btn:not(.ai-editor-markdown-btn)");
+    for (const selector of [".ai-editor-chat", ".ai-editor-copy-btn", ".ai-editor-annotate-input"]) {
+      expect(browser.getComputedStyle(browser.document.querySelector(selector)!).colorScheme).toContain("light");
+    }
+  });
+  test("comments near the bottom-left edge flip above their button and stay inside the viewport", () => {
+    Object.defineProperty(browser, "innerWidth", { configurable: true, value: 340 });
+    Object.defineProperty(browser, "innerHeight", { configurable: true, value: 200 });
+    Object.defineProperty(browser.HTMLElement.prototype, "getBoundingClientRect", { configurable: true, value: function (this: HTMLElement) {
+      return this.classList.contains("ai-editor-annotate-popover") ? new browser.DOMRect(0, 0, 240, 110) : new browser.DOMRect(18, 160, 20, 20);
+    } });
+    click("#title"); click(".ai-editor-annotate-btn:not(.ai-editor-markdown-btn)");
+    const pop = browser.document.querySelector<typeof browser.HTMLElement.prototype>(".ai-editor-annotate-popover")!;
+    expect(parseFloat(pop.style.left)).toBeGreaterThanOrEqual(8);
+    expect(parseFloat(pop.style.top)).toBeGreaterThanOrEqual(8);
+    expect(parseFloat(pop.style.top) + 110).toBeLessThanOrEqual(192);
+  });
   test("a selected heading exports semantic context and a locator for that exact element", async () => {
     click("#title");
     const text = await copy();

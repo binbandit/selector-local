@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Selector appearance checks</title>
+<link rel="stylesheet" href="assets/editor.css">
+<style>
+  :root { color-scheme:light dark; font:16px/1.5 system-ui,sans-serif; background:#fff; color:#17232d; }
+  body { margin:0; padding:24px; min-height:180vh; background:#fff; color:#17232d; }
+  html.dark, html.dark body { background:#181a1f; color:#edf0f5; }
+  button,a { font:inherit; } button { padding:8px 14px; background:#eee; color:#17232d; border:1px solid #999; border-radius:6px; cursor:pointer; }
+  h1 { font-size:26px; } #launch { margin:16px 0; } .bottom { position:fixed; bottom:12px; left:12px; right:12px; display:flex; justify-content:space-between; pointer-events:none; }
+  .bottom button { pointer-events:auto; } .sample { max-width:560px; border:1px solid #999; padding:24px; margin-top:40px; } nav { display:flex; gap:16px; }
+</style>
+<script>if(new URLSearchParams(location.search).get('theme')==='dark') document.documentElement.classList.add('dark');</script>
+</head><body>
+<nav><a href="?theme=light">Light page</a><a href="?theme=dark">Dark page</a></nav>
+<h1>Page appearance checks</h1><p>The page palette is independent of the system preference.</p>
+<button id="launch">Open Selector</button>
+<section class="sample"><h2 id="sample-heading">Theme report target</h2><p>Select this heading and copy a Sharingan report.</p></section>
+<div class="bottom"><button data-testid="bottom-left">Bottom left target</button><button data-testid="bottom-right">Bottom right target</button></div>
+<div id="install"></div><script src="demo.js"></script>
+</body></html>

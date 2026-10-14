@@ -14,6 +14,8 @@ const sync: Record<string, unknown> = {}, session: Record<string, unknown> = {};
 let active = true, interrupted = false;
 const messages: { tabId: number; message: unknown }[] = [];
 const injected: unknown[] = [];
+const insertedStyles: chrome.scripting.CSSInjection[] = [];
+const removedStyles: chrome.scripting.CSSInjection[] = [];
 const downloaded: chrome.downloads.DownloadOptions[] = [];
 const store = (data: Record<string, unknown>) => ({ get: async () => ({ ...data }), set: async (value: Record<string, unknown>) => { Object.assign(data, value); } });
 const onMessage = event<[unknown, chrome.runtime.MessageSender, (response: Response) => void]>();
@@ -36,7 +38,7 @@ const fakeChrome = {
     captureVisibleTab: async () => "data:image/png;base64,captured",
     create: async () => {}, onActivated: activated, onUpdated: updated,
   },
-  scripting: { executeScript: async (args: unknown) => { injected.push(args); }, insertCSS: async () => {}, removeCSS: async () => {} },
+  scripting: { executeScript: async (args: unknown) => { injected.push(args); }, insertCSS: async (args: chrome.scripting.CSSInjection) => { insertedStyles.push(args); }, removeCSS: async (args: chrome.scripting.CSSInjection) => { removedStyles.push(args); } },
   downloads: {
     download: async (options: chrome.downloads.DownloadOptions) => { downloaded.push(options); return 42; },
     search: async () => [{ id: 42, state: interrupted ? "interrupted" : "complete", error: interrupted ? "FILE_ACCESS_DENIED" : undefined, filename: "/Users/test/Downloads/Selector/selector-test (1).png" }],
@@ -60,6 +62,7 @@ beforeEach(() => {
   for (const key of Object.keys(sync)) delete sync[key];
   for (const key of Object.keys(session)) delete session[key];
   messages.length = 0; injected.length = 0; downloaded.length = 0; active = true; interrupted = false;
+  insertedStyles.length = 0; removedStyles.length = 0;
 });
 
 describe("browser integration through service-worker entry points", () => {
@@ -105,6 +108,13 @@ describe("browser integration through service-worker entry points", () => {
     const response = await request({ op: "mount", args: {} });
     expect(response.ok).toBe(true);
     expect(injected).toContainEqual({ target: { tabId: 7 }, world: "MAIN", files: ["host.js", "vendor/editor.js"] });
+  });
+  test("mount gives picker styles author priority and removes both previous stylesheet origins", async () => {
+    session.enabled = true;
+    await request({ op: "mount", args: {} });
+    expect(insertedStyles).toContainEqual({ target: { tabId: 7 }, files: ["editor.css"], origin: "AUTHOR" });
+    expect(removedStyles.map(styles => styles.origin)).toContain("USER");
+    expect(removedStyles.map(styles => styles.origin)).toContain("AUTHOR");
   });
   test("capture refuses an inactive tab instead of capturing another page", async () => {
     session.enabled = true; active = false;
