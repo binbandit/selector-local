@@ -27,9 +27,6 @@
   const HOST = (typeof window !== "undefined" && window.__SELECTOR_HOST__) || {};
   const AI_ID = "data-ai-id";
   const VERSION = "0.4.1";
-  // Cross-link targets for the settings-panel promo (bookmarklet ⇄ Pro extension).
-  const EXT_LANDING_URL = "https://selector-pro.org/";
-  const BOOKMARKLET_URL = "https://oil-oil.github.io/selector/";
   // Keep the bookmarklet's pause behavior and visible shortcut hint sourced
   // from one value so they cannot drift apart again.
   const PAUSE_SHORTCUT_KEY = "F2";
@@ -55,45 +52,14 @@
       shortcutMarkdown:"Markdown", shortcutMarkdownDesc:"Copy the selected content as Markdown",
       shortcutRecordHint:"Press a shortcut. Single keys and combinations are supported; Delete clears.", shortcutDuplicate:"That shortcut is already assigned.", shortcutInvalid:"Typing keys need Command, Control, or Alt.", shortcutCleared:"Not set",
       shortcutUnassigned:"Not set", shortcutSet:"Set", shortcutChange:"Change",
-      proPromoTitle:"Selector Pro", proPromoDesc:"Always one shortcut away. Stays active across tabs, captures complete elements without dialogs, and syncs your settings.", proPromoCta:"Get the extension →",
-      freePromoTitle:"Free bookmarklet", freePromoDesc:"No install — drag a bookmark, use on any page.", freePromoCta:"Open on GitHub →",
       mdTitle:"Markdown ready", mdPreparing:"Preparing Markdown…", copyMarkdown:"Copy Markdown",
       errUnsupported:"Browser not supported", errCancelled:"Screen choice cancelled",
       errPermission:"Screen recording blocked", errClipboard:"Clipboard blocked",
       errCapture:"Screenshot failed", errEmpty:"Selected area is empty", errDownload:"File save failed",
     },
-    zh: {
-      selecting:"\u9009\u62e9\u4e2d", paused:"\u5df2\u6682\u505c", copyPrompt:"\u590d\u5236\u63d0\u793a\u8bcd", copyReport:"\u963f\u739b\u7279\u62c9\u65af\uff01", copyCombined:"\u590d\u5236\u56fe\u6587", copyScreenshot:"\u590d\u5236\u622a\u56fe",
-      copied:"\u5df2\u590d\u5236", copiedFallback:"\u5df2\u901a\u8fc7\u5907\u7528\u65b9\u5f0f\u590d\u5236", copyFailed:"\u590d\u5236\u5931\u8d25", copiedSaved:"\u5df2\u590d\u5236\u5e76\u4fdd\u5b58", exported:"Markdown \u5df2\u5bfc\u51fa", screenshotCopied:"\u622a\u56fe\u5df2\u590d\u5236", screenshotCopiedSaved:"\u622a\u56fe\u5df2\u590d\u5236\u5e76\u4fdd\u5b58", screenshotFailed:"\u622a\u56fe\u5931\u8d25",
-      settings:"\u8bbe\u7f6e", lang:"\u8bed\u8a00", addInstruction:"\u6dfb\u52a0\u6307\u4ee4",
-      instrPlaceholder:"\u6b64\u5143\u7d20\u7684\u4fee\u6539\u6307\u4ee4\u2026", clear:"\u6e05\u9664", done:"\u5b8c\u6210",
-      clearAll:"\u6e05\u9664\u5168\u90e8", minimize:"\u6700\u5c0f\u5316", restore:"\u6062\u590d", close:"\u5173\u95ed",
-      groupGeneral:"\u901a\u7528", groupShortcuts:"\u9875\u5185\u5feb\u6377\u952e",
-      skSelect:"\u9009\u62e9", skMulti:"\u591a\u9009", skNavigate:"\u5bfc\u822a", skPause:"\u6682\u505c",
-      skCopy:"\u590d\u5236", skScreenshot:"\u622a\u56fe", skMarkdown:"Markdown", skActivate:"\u5f00/\u5173", skUndo:"\u64a4\u9500", skClear:"\u6e05\u9664",
-      optCombined:"\u622a\u56fe + \u6587\u672c\u5408\u5e76", optCombinedDesc:"\u540c\u65f6\u590d\u5236\u622a\u56fe\u548c\u63d0\u793a\u8bcd\u6587\u672c",
-      optCombinedPro:"\u590d\u5236\u6309\u94ae\u540c\u65f6\u622a\u56fe", optCombinedProDesc:"\u70b9\u51fb\u4e3b\u590d\u5236\u6309\u94ae\u65f6\uff0c\u540c\u65f6\u622a\u53d6\u5df2\u9009\u5143\u7d20",
-      optSharingan:"\u5199\u8f6e\u773c\u6a21\u5f0f", optSharinganDesc:"\u590d\u5236\u5b8c\u6574 DOM\u3001\u6837\u5f0f\u3001\u5b57\u4f53\u4e0e\u52a8\u753b\u62a5\u544a",
-      savePng:"\u4fdd\u5b58 PNG",
-      proShortcutTitle:"\u542f\u52a8\u5feb\u6377\u952e", proShortcutHint:"\u6253\u5f00 Chrome \u5feb\u6377\u952e\u8bbe\u7f6e",
-      shortcutCopyContext:"\u590d\u5236\u4e0a\u4e0b\u6587", shortcutCopyContextDesc:"\u590d\u5236\u5df2\u9009\u5143\u7d20\u548c\u9875\u9762\u4e0a\u4e0b\u6587",
-      shortcutScreenshotContext:"\u622a\u56fe + \u4e0a\u4e0b\u6587", shortcutScreenshotContextDesc:"\u590d\u5236\u5e26\u5df2\u9009\u4e0a\u4e0b\u6587\u7684 PNG \u622a\u56fe",
-      shortcutMarkdown:"Markdown", shortcutMarkdownDesc:"\u5c06\u5df2\u9009\u5185\u5bb9\u590d\u5236\u4e3a Markdown",
-      shortcutRecordHint:"\u8bf7\u6309\u4e0b\u5feb\u6377\u952e\u3002\u652f\u6301\u5355\u952e\u548c\u7ec4\u5408\u952e\uff1bDelete \u6e05\u9664\u3002", shortcutDuplicate:"\u8be5\u5feb\u6377\u952e\u5df2\u5206\u914d\u3002", shortcutInvalid:"\u5b57\u6bcd\u3001\u6570\u5b57\u548c\u7b26\u53f7\u952e\u9700\u642d\u914d Command\u3001Control \u6216 Alt\u3002", shortcutCleared:"\u672a\u8bbe\u7f6e",
-      shortcutUnassigned:"\u672a\u8bbe\u7f6e", shortcutSet:"\u8bbe\u7f6e", shortcutChange:"\u4fee\u6539",
-      proPromoTitle:"Selector Pro", proPromoDesc:"\u968f\u65f6\u4e00\u952e\u5524\u8d77\u3002\u5207\u6362\u6807\u7b7e\u4ecd\u4fdd\u6301\u5f00\u542f\u3001\u96f6\u5f39\u7a97\u5b8c\u6574\u622a\u56fe\u3001\u8bbe\u7f6e\u81ea\u52a8\u540c\u6b65\u3002", proPromoCta:"\u83b7\u53d6\u6d4f\u89c8\u5668\u6269\u5c55 \u2192",
-      freePromoTitle:"\u514d\u8d39\u4e66\u7b7e\u7248", freePromoDesc:"\u514d\u5b89\u88c5 \u2014\u2014 \u62d6\u4e00\u4e2a\u4e66\u7b7e\uff0c\u4efb\u610f\u9875\u9762\u53ef\u7528\u3002", freePromoCta:"\u5728 GitHub \u6253\u5f00 \u2192",
-      mdTitle:"Markdown \u5df2\u751f\u6210", mdPreparing:"Markdown \u751f\u6210\u4e2d\u2026", copyMarkdown:"\u590d\u5236 Markdown",
-      errUnsupported:"\u6d4f\u89c8\u5668\u4e0d\u652f\u6301", errCancelled:"\u5df2\u53d6\u6d88\u5c4f\u5e55\u9009\u62e9",
-      errPermission:"\u5c4f\u5e55\u5f55\u5236\u6743\u9650\u53d7\u9650", errClipboard:"\u526a\u8d34\u677f\u6743\u9650\u53d7\u9650",
-      errCapture:"\u622a\u56fe\u5931\u8d25", errEmpty:"\u9009\u4e2d\u533a\u57df\u65e0\u6cd5\u622a\u56fe", errDownload:"\u6587\u4ef6\u4fdd\u5b58\u5931\u8d25",
-    }
   };
-  let lang = "en";
-  // Host may pre-seed the language (read once at init); else read localStorage;
-  // else follow the browser's UI language so i18n consistently matches the user.
-  try { lang = HOST.initialLang || localStorage.getItem(NS + "-lang") || (/^zh\b/i.test(navigator.language || "") ? "zh" : "en"); } catch(_) {}
-  function t(k) { return (DICT[lang] && DICT[lang][k]) || DICT.en[k] || k; }
+  const lang = "en";
+  function t(k) { return DICT.en[k] || k; }
 
   // ── Settings ─────────────────────────────────────────────────
   const DEFAULTS = { combined:false, sharingan:false };
@@ -175,6 +141,7 @@
 
   // ── State ────────────────────────────────────────────────────
   let selectedElements = [], chatPanel = null, hoverBox = null, aiIdCounter = 0;
+  let pageGeneration = 0;
   let rafPending = false, layerRafPending = false, lastMoveTarget = null, minimized = false, paused = false;
   let layerHost = null;
   const selOverlays = new Map(), annotations = new Map(), listeners = [];
@@ -238,6 +205,8 @@
       // Same-document navigation (SPA/history) must look like a full reload:
       // keep the panel and synced preferences, discard page-specific UI state.
       window.__SELECTOR_ON_NAVIGATION__ = function () {
+        pageGeneration++;
+        copyRequestToken++;
         try {
           showHover(null);
           cancelDrag();
@@ -273,17 +242,13 @@
         }
         applyI18n();
       };
-      window.__SELECTOR_APPLY_LANG__ = function (next) {
-        if (next !== "en" && next !== "zh") return;
-        lang = next;
-        applyI18n();
-        refreshSettingsLabels();
-      };
+
     } catch (_) {}
   }
 
   // ── Destroy ──────────────────────────────────────────────────
   function destroy() {
+    copyRequestToken++;
     for (const { target, type, fn, capture } of listeners) target.removeEventListener(type, fn, capture);
     listeners.length = 0;
     if (domObserver) { try { domObserver.disconnect(); } catch (_) {} domObserver = null; }

@@ -2,6 +2,7 @@
   let copyTimer=null;
   let copyRequestToken = 0;
   function showCopyFeedback(msg, isError, detail) {
+    if (!chatPanel || !chatPanel.isConnected) return;
     const btn=chatPanel.querySelector(`.${NS}-copy-btn`);
     if (!btn) return;
     if (copyTimer) clearTimeout(copyTimer);
@@ -46,6 +47,11 @@
   }
   async function copyPrompt() {
     const requestToken = ++copyRequestToken;
+    const copyTargets = selectedElements.slice();
+    const copyNotes = copyTargets.map(el => annotations.get(el.getAttribute(AI_ID)) || "");
+    const stillCurrent = () => requestToken === copyRequestToken && chatPanel &&
+      selectedElements.length === copyTargets.length && copyTargets.every((el, index) =>
+        el === selectedElements[index] && (annotations.get(el.getAttribute(AI_ID)) || "") === copyNotes[index]);
     // While a result panel is open, Copy copies that panel's text until closed.
     if (pendingGenPrompt) {
       const result = await writeToClipboard(pendingGenPrompt);
@@ -65,6 +71,7 @@
           buildSharinganReport,
         });
         if (payload) {
+          if (!stillCurrent()) return;
           const result = await writeToClipboard(payload.text);
           if (payload.download && payload.download.content) {
             downloadMarkdown(payload.download.content, payload.download.filename);
@@ -90,7 +97,9 @@
     if (settings.sharingan && HOST.prepareStyles) {
       try { await HOST.prepareStyles(selectedElements); } catch (_) {}
     }
+    if (!stillCurrent()) return;
     const text = settings.sharingan ? buildSharinganReport() : buildPromptText(); if (!text) return;
+    const shortContext = buildPromptText();
     if (settings.combined) {
       if (settings.sharingan && text.length > SHARINGAN_CLIPBOARD_CHAR_LIMIT) {
         const filename = sharinganFilename();
@@ -101,8 +110,8 @@
           showDownloadError(err);
           return;
         }
-        const promptText = appendSharinganDownloadReference(buildPromptText(), filename, text.length, realPath);
-        if (requestToken === copyRequestToken) await captureScreenshot({ text: promptText, feedbackTarget: "copy", copyRequestToken: requestToken, downloadImage: true });
+        const promptText = appendSharinganDownloadReference(shortContext, filename, text.length, realPath);
+        if (stillCurrent()) await captureScreenshot({ text: promptText, feedbackTarget: "copy", copyRequestToken: requestToken, downloadImage: true });
         return;
       }
       if (requestToken === copyRequestToken) await captureScreenshot({ text, feedbackTarget: "copy", copyRequestToken: requestToken, downloadImage: true });
@@ -117,7 +126,8 @@
         showDownloadError(err);
         return;
       }
-      const fallback = appendSharinganDownloadReference(buildPromptText(), filename, text.length, realPath);
+      if (!stillCurrent()) return;
+      const fallback = appendSharinganDownloadReference(shortContext, filename, text.length, realPath);
       const result = await writeToClipboard(fallback);
       showClipboardFeedback(result, requestToken, "exported");
       return;
@@ -533,15 +543,24 @@
   async function captureScreenshot(options) {
     if (selectedElements.length === 0) return;
     const opts = options || {};
+    const capturePanel = chatPanel;
+    const captureGeneration = pageGeneration;
+    const stillOpen = () => pageGeneration === captureGeneration && chatPanel === capturePanel && capturePanel && capturePanel.isConnected;
+    const targets = selectedElements.slice();
+    const contextText = Object.prototype.hasOwnProperty.call(opts, "text")
+      ? opts.text
+      : (HOST.screenshotClipboardContext === true || settings.combined ? buildPromptText() : "");
     const feedbackTarget = opts.feedbackTarget || "screenshot";
     const requestToken = feedbackTarget === "copy" ? (opts.copyRequestToken || ++copyRequestToken) : null;
     const showError = (code, err) => {
+      if (!stillOpen()) return;
       if (feedbackTarget === "copy") {
         if (requestToken !== copyRequestToken) return;
         showCopyCaptureError(code, err);
       } else showScreenshotError(code, err);
     };
     const showSuccess = (savedImage) => {
+      if (!stillOpen()) return;
       if (feedbackTarget === "copy") {
         if (requestToken !== copyRequestToken) return;
         showCopyFeedback(savedImage ? t("copiedSaved") : t("copied"));
@@ -551,7 +570,7 @@
     // extension host captures via captureVisibleTab and must not be blocked
     // on pages where mediaDevices is absent (e.g. non-secure contexts).
     const hostCanCapture = !!(HOST.grabViewportFrame || HOST.captureRegion);
-    if (!navigator.clipboard || (!hostCanCapture && (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia))) {
+    if (!hostCanCapture && (!navigator.clipboard || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia)) {
       showError("unsupported");
       return;
     }
@@ -559,11 +578,12 @@
     const imageFilename = (opts.downloadImage || HOST.autoSaveScreenshots) ? screenshotFilename() : "";
     let imageBlob;
     try {
-      imageBlob = await captureScreenshotBlob();
+      imageBlob = await captureScreenshotBlob(targets);
     } catch (err) {
       showError(classifyScreenshotError(err, "capture"), err);
       return;
     }
+    if (!stillOpen()) return;
 
     let imageSaved = false;
     let savedFilename = imageFilename;
@@ -583,15 +603,13 @@
     // Pro screenshot actions always carry the regular prompt/context text,
     // independently of the main Copy button's combined toggle. This keeps a
     // direct screenshot useful to an AI while preserving bookmarklet behavior.
-    const text = Object.prototype.hasOwnProperty.call(opts, "text")
-      ? opts.text
-      : (HOST.screenshotClipboardContext === true ? buildPromptText() : (settings.combined ? buildPromptText() : ""));
+    if (!stillOpen()) return;
+    const text = contextText;
     const textWithImagePath = imageFilename ? appendScreenshotSaveReference(text, savedFilename, imageSaved, savedPath) : text;
 
     try {
-      if (!window.ClipboardItem) {
-        showError("unsupported");
-        return;
+      if (!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) {
+        throw new Error(imageSaved ? `PNG saved to ${savedPath || savedFilename}. This page cannot copy images to the clipboard.` : "This page cannot copy images to the clipboard.");
       }
       let itemData = { "image/png": imageBlob };
       if (textWithImagePath) {
@@ -793,11 +811,26 @@
   // Early split keeps the bookmarklet path byte-for-byte identical: when the
   // Host provides grabViewportFrame (extension uses captureVisibleTab) we use
   // the no-prompt host path; otherwise the existing getDisplayMedia path runs.
-  async function captureScreenshotBlob() {
+  async function captureScreenshotBlob(elements) {
+    const targets = elements || selectedElements;
     // ── Full-element / full-page region capture (HOST_CONTRACT.md §10) ──
     // Bookmarklet has no HOST.captureRegion → this whole branch is skipped and the
     // original viewport dispatch (getDisplayMedia path) runs byte-for-byte.
     const scope = (settings && settings.screenshotScope) || "viewport";
+    if (scope === "fullElement" && HOST.grabViewportFrame && targets.some(element => {
+      for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+        if (/^(fixed|sticky)$/.test(getComputedStyle(ancestor).position)) return true;
+      }
+      return false;
+    })) {
+      // Pinned elements change document coordinates when scrolling. Capture
+      // their current viewport so the crop still describes the chosen element.
+      if (targets.some(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.left < 0 || rect.top < 0 || rect.right > innerWidth || rect.bottom > innerHeight;
+      })) throw screenshotError("capture", new Error("The fixed selection does not fit in the viewport. Choose Visible selection in screenshot settings."));
+      return captureViaHost(targets);
+    }
     if (scope !== "viewport" && HOST.captureRegion) {
       const editorEls = document.querySelectorAll(`.${NS}-root, .${NS}-hover-box, .${NS}-sel-box, .${NS}-sel-corner, .${NS}-sel-label, .${NS}-annotate-btn, .${NS}-marquee`);
       const previousDisplay = Array.from(editorEls, el => [el, el.style.display]);
@@ -821,7 +854,7 @@
         } else {
           // fullElement: union of selected element rects in DOCUMENT coords.
           let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          selectedElements.forEach(el => {
+          targets.forEach(el => {
             const r = el.getBoundingClientRect();
             minX = Math.min(minX, r.left + window.scrollX);
             minY = Math.min(minY, r.top + window.scrollY);
@@ -843,14 +876,14 @@
         previousDisplay.forEach(([el, display]) => { el.style.display = display; });
       }
     }
-    if (HOST.grabViewportFrame) return captureViaHost();
-    return captureViaDisplayMedia();
+    if (HOST.grabViewportFrame) return captureViaHost(targets);
+    return captureViaDisplayMedia(targets);
   }
 
   // Extension path: grab a ready-to-draw viewport frame from the Host (already
   // physical pixels = viewport CSS px × dpr) and crop to the selection using
   // the SAME math as the getDisplayMedia path. No getDisplayMedia, no prompt.
-  async function captureViaHost() {
+  async function captureViaHost(elements) {
     const editorEls = document.querySelectorAll(`.${NS}-root, .${NS}-hover-box, .${NS}-sel-box, .${NS}-sel-corner, .${NS}-sel-label, .${NS}-annotate-btn, .${NS}-marquee`);
     const previousDisplay = Array.from(editorEls, el => [el, el.style.display]);
     try {
@@ -862,7 +895,7 @@
       const sourceHeight = frame.height || frame.naturalHeight || frame.videoHeight;
       const dpr = window.devicePixelRatio || 1;
       let minX=Infinity, minY=Infinity, maxX=0, maxY=0;
-      selectedElements.forEach(el => { const r=el.getBoundingClientRect(); minX=Math.min(minX,r.left*dpr); minY=Math.min(minY,r.top*dpr); maxX=Math.max(maxX,r.right*dpr); maxY=Math.max(maxY,r.bottom*dpr); });
+      elements.forEach(el => { const r=el.getBoundingClientRect(); minX=Math.min(minX,r.left*dpr); minY=Math.min(minY,r.top*dpr); maxX=Math.max(maxX,r.right*dpr); maxY=Math.max(maxY,r.bottom*dpr); });
       const pad = 8 * dpr;
       minX=Math.max(0,Math.floor(minX-pad)); minY=Math.max(0,Math.floor(minY-pad));
       maxX=Math.min(sourceWidth,Math.ceil(maxX+pad)); maxY=Math.min(sourceHeight,Math.ceil(maxY+pad));
@@ -878,7 +911,7 @@
     }
   }
 
-  async function captureViaDisplayMedia() {
+  async function captureViaDisplayMedia(elements) {
     const editorEls = document.querySelectorAll(`.${NS}-root, .${NS}-hover-box, .${NS}-sel-box, .${NS}-sel-corner, .${NS}-sel-label, .${NS}-annotate-btn, .${NS}-marquee`);
     const previousDisplay = Array.from(editorEls, el => [el, el.style.display]);
     let stream = null;
@@ -896,7 +929,7 @@
       const sourceHeight = frame.height || frame.videoHeight;
       const dpr = window.devicePixelRatio || 1;
       let minX=Infinity, minY=Infinity, maxX=0, maxY=0;
-      selectedElements.forEach(el => { const r=el.getBoundingClientRect(); minX=Math.min(minX,r.left*dpr); minY=Math.min(minY,r.top*dpr); maxX=Math.max(maxX,r.right*dpr); maxY=Math.max(maxY,r.bottom*dpr); });
+      elements.forEach(el => { const r=el.getBoundingClientRect(); minX=Math.min(minX,r.left*dpr); minY=Math.min(minY,r.top*dpr); maxX=Math.max(maxX,r.right*dpr); maxY=Math.max(maxY,r.bottom*dpr); });
       const pad = 8 * dpr;
       minX=Math.max(0,Math.floor(minX-pad)); minY=Math.max(0,Math.floor(minY-pad));
       maxX=Math.min(sourceWidth,Math.ceil(maxX+pad)); maxY=Math.min(sourceHeight,Math.ceil(maxY+pad));

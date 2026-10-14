@@ -14,12 +14,11 @@ const editorParts = [
 ];
 
 const editorPayloadParts = [
-  ...editorParts.map((file, index) => ({
-    output: `payload-${String(index).padStart(2, "0")}.css`,
+  ...editorParts.map((file) => ({
     source: path.join("src", file),
   })),
-  { output: "payload-05.css", source: path.join("src", "sharingan.js"), stripHeader: true },
-  { output: "payload-06.css", source: path.join("src", "context.js") },
+  { source: path.join("src", "sharingan.js"), stripHeader: true },
+  { source: path.join("src", "context.js") },
 ];
 
 function read(file) {
@@ -35,18 +34,6 @@ function copyFile(from, to) {
   fs.copyFileSync(from, to);
 }
 
-function copyDir(from, to, skip) {
-  ensureDir(to);
-  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
-    const source = path.join(from, entry.name);
-    const target = path.join(to, entry.name);
-    const rel = path.relative(root, source);
-    if (skip && skip(rel)) continue;
-    if (entry.isDirectory()) copyDir(source, target, skip);
-    else if (entry.isFile()) copyFile(source, target);
-  }
-}
-
 function stripSharinganHeader(source) {
   return source.replace(/^\s*\/\*\*[\s\S]*?\*\/\s*/, "");
 }
@@ -60,14 +47,10 @@ function buildEditor() {
       throw new Error(`Unreplaced Sharingan marker in ${part.source}`);
     }
     assembled.push(output);
-    fs.writeFileSync(path.join(distAssets, part.output), Buffer.from(output, "utf8").toString("base64"));
   }
-  // Parse the exact assembled payload during every build. The deployed files
-  // are base64-encoded static assets, but the decoded bookmarklet must remain
-  // valid JavaScript.
+  // Check the exact picker bundle for syntax errors before packaging it.
   const joined = assembled.join("");
   new Function(joined);
-  // Flat editor.js for Selector Pro (vendors this file into dist/vendor/core.js).
   fs.writeFileSync(path.join(distAssets, "editor.js"), joined);
 }
 
@@ -77,7 +60,6 @@ function build() {
   copyFile(path.join(root, "index.html"), path.join(dist, "index.html"));
   copyFile(path.join(root, "assets", "editor.css"), path.join(distAssets, "editor.css"));
   copyFile(path.join(root, "assets", "favicon.svg"), path.join(distAssets, "favicon.svg"));
-  copyDir(path.join(root, "assets", "product-hunt"), path.join(distAssets, "product-hunt"));
   buildEditor();
 }
 

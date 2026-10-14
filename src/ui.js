@@ -3,13 +3,14 @@
     removeAnnotationPopover(); const aiId = el.getAttribute(AI_ID);
     const popover = document.createElement("div"); popover.className = `${NS}-root ${NS}-annotate-popover`;
     const textarea = document.createElement("textarea"); textarea.className = `${NS}-annotate-input`;
+    textarea.setAttribute("aria-label", t("instrPlaceholder"));
     textarea.value = annotations.get(aiId)||""; textarea.placeholder = t("instrPlaceholder"); textarea.rows = 2;
     const actions = document.createElement("div"); actions.className = `${NS}-annotate-actions`;
     const clearBtn = document.createElement("button"); clearBtn.className = `${NS}-annotate-clear`; clearBtn.textContent = t("clear");
     const doneBtn = document.createElement("button"); doneBtn.className = `${NS}-annotate-done`; doneBtn.textContent = t("done");
-    const save = () => { const v=textarea.value.trim(); if(v) annotations.set(aiId,v); else annotations.delete(aiId); removeAnnotationPopover(); positionSelOverlay(el); };
+    const save = () => { const v=textarea.value.trim(); if(v) annotations.set(aiId,v); else annotations.delete(aiId); removeAnnotationPopover(); positionSelOverlay(el); updateTags(); };
     doneBtn.onclick = (e) => { e.stopPropagation(); save(); };
-    clearBtn.onclick = (e) => { e.stopPropagation(); annotations.delete(aiId); removeAnnotationPopover(); positionSelOverlay(el); };
+    clearBtn.onclick = (e) => { e.stopPropagation(); annotations.delete(aiId); removeAnnotationPopover(); positionSelOverlay(el); updateTags(); };
     textarea.addEventListener("keydown", (e) => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();save();} e.stopPropagation(); });
     textarea.addEventListener("click", (e) => e.stopPropagation());
     actions.appendChild(clearBtn); actions.appendChild(doneBtn); popover.appendChild(textarea); popover.appendChild(actions);
@@ -43,6 +44,7 @@
     info.appendChild(labelLine); info.appendChild(desc);
     const toggle = document.createElement("label"); toggle.className = `${NS}-toggle`;
     const input = document.createElement("input"); input.type = "checkbox"; input.checked = !!settings[key];
+    input.setAttribute("aria-label", t(settingTextKey(key)));
     const slider = document.createElement("span"); slider.className = `${NS}-toggle-slider`;
     toggle.appendChild(input); toggle.appendChild(slider);
     input.onchange = () => {
@@ -114,7 +116,7 @@
       }
       const next = shortcutFromEvent(event);
       if (!next) { desc.textContent = t("shortcutInvalid"); return; }
-      const activationConflict = normalizeShortcutBinding(HOST.activationShortcut) === next;
+      const activationConflict = [HOST.activationShortcut, HOST.browserShortcut].some(binding => normalizeShortcutBinding(binding) === next);
       const duplicate = activationConflict || PRO_SHORTCUT_KEYS.some(other => other !== key && normalizeShortcutBinding(settings[other]) === next);
       if (duplicate) { desc.textContent = t("shortcutDuplicate"); return; }
       settings[key] = next; saveSettings();
@@ -145,7 +147,7 @@
   // descriptor (labelEn/labelZh/descEn/descZh) rather than the DICT, and writes
   // go to settings[key] + saveSettings(). Only reached when HOST.uiExtras exists.
   function extraText(extra, base) {
-    return lang === "zh" ? (extra[base + "Zh"] || extra[base + "En"] || "") : (extra[base + "En"] || extra[base + "Zh"] || "");
+    return extra[base + "En"] || "";
   }
   function mkExtraToggle(extra) {
     if (!extra || !extra.key) return null;
@@ -160,6 +162,7 @@
     if (descText) { const desc = document.createElement("span"); desc.className = `${NS}-setting-desc`; desc.textContent = descText; info.appendChild(desc); }
     const toggle = document.createElement("label"); toggle.className = `${NS}-toggle`;
     const input = document.createElement("input"); input.type = "checkbox"; input.checked = !!settings[extra.key];
+    input.setAttribute("aria-label", extraText(extra, "label"));
     const slider = document.createElement("span"); slider.className = `${NS}-toggle-slider`;
     toggle.appendChild(input); toggle.appendChild(slider);
     input.onchange = () => {
@@ -183,9 +186,10 @@
     info.appendChild(labelLine);
     if (descText) { const desc = document.createElement("span"); desc.className = `${NS}-setting-desc`; desc.textContent = descText; info.appendChild(desc); }
     const select = document.createElement("select"); select.className = `${NS}-setting-select`;
+    select.setAttribute("aria-label", extraText(extra, "label"));
     (extra.options || []).forEach(opt => {
       const o = document.createElement("option"); o.value = opt.value;
-      o.textContent = lang === "zh" ? (opt.labelZh || opt.labelEn || opt.value) : (opt.labelEn || opt.labelZh || opt.value);
+      o.textContent = opt.labelEn || opt.value;
       if (settings[extra.key] === opt.value) o.selected = true;
       select.appendChild(o);
     });
@@ -205,6 +209,17 @@
     group.className = `${NS}-setting-group-title`;
     group.dataset.settingGroup = key;
     group.textContent = t("group" + key[0].toUpperCase() + key.slice(1));
+    if (key === "shortcuts") {
+      const header = document.createElement("div"); header.className = `${NS}-setting-group-header`;
+      const reset = document.createElement("button"); reset.type = "button"; reset.className = `${NS}-shortcut-reset`;
+      reset.textContent = "Reset"; reset.setAttribute("aria-label", "Reset page shortcuts");
+      reset.onclick = () => {
+        settings = Object.assign({}, settings, PRO_SHORTCUT_DEFAULTS);
+        saveSettings(); refreshShortcutRows(); updateShortcuts();
+      };
+      header.appendChild(group); header.appendChild(reset);
+      return header;
+    }
     return group;
   }
 
@@ -217,74 +232,14 @@
     return raw.split("+").map(part => symbols[part] || part).join("");
   }
 
-  function refreshProSettingsSummary() {
-    if (!settingsPanel) return;
-    const block = settingsPanel.querySelector(`.${NS}-settings-pro`);
-    if (!block) return;
-    const title = block.querySelector(`.${NS}-settings-pro-title`);
-    if (title) title.textContent = t("proShortcutTitle");
-    const hint = block.querySelector(`.${NS}-settings-pro-hint`);
-    if (hint) hint.textContent = t("proShortcutHint");
-    const shortcut = block.querySelector(`.${NS}-settings-shortcut-current`);
-    const edit = block.querySelector(`.${NS}-settings-shortcut-edit`);
-    const assigned = !!HOST.activationShortcut;
-    if (shortcut) {
-      shortcut.textContent = assigned ? formatActivationShortcut(HOST.activationShortcut) : t("shortcutUnassigned");
-      shortcut.classList.toggle(`${NS}-settings-shortcut-unassigned`, !assigned);
-    }
-    if (edit) edit.textContent = t(assigned ? "shortcutChange" : "shortcutSet");
-  }
-
-  function mkProSettingsSummary() {
-    const wrap = document.createElement("div"); wrap.className = `${NS}-settings-pro`;
-    const head = document.createElement("div"); head.className = `${NS}-settings-pro-head`;
-
-    const meta = document.createElement("div"); meta.className = `${NS}-settings-pro-meta`;
-    const labelLine = document.createElement("div"); labelLine.className = `${NS}-settings-pro-label-line`;
-    const badge = document.createElement("span"); badge.className = `${NS}-pro-badge`; badge.textContent = "Pro";
-    const title = document.createElement("span"); title.className = `${NS}-settings-pro-title`;
-    labelLine.appendChild(badge); labelLine.appendChild(title);
-    const hint = document.createElement("span"); hint.className = `${NS}-settings-pro-hint`;
-    meta.appendChild(labelLine); meta.appendChild(hint);
-
-    const shortcutBtn = document.createElement("button"); shortcutBtn.type = "button"; shortcutBtn.className = `${NS}-settings-shortcut-action`;
-    const shortcut = document.createElement("kbd"); shortcut.className = `${NS}-settings-shortcut-current`;
-    const edit = document.createElement("span"); edit.className = `${NS}-settings-shortcut-edit`;
-    shortcutBtn.appendChild(shortcut); shortcutBtn.appendChild(edit);
-    shortcutBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (HOST.openShortcutSettings) HOST.openShortcutSettings();
-      else if (HOST.openOptions) HOST.openOptions();
-    };
-
-    head.appendChild(meta); head.appendChild(shortcutBtn); wrap.appendChild(head);
-    return wrap;
-  }
-
   function createSettingsPanel() {
     settingsPanel = document.createElement("div"); settingsPanel.className = `${NS}-root ${NS}-settings${HOST.isExtension ? ` ${NS}-pro` : ""}`;
     const hdr = document.createElement("div"); hdr.className = `${NS}-settings-header`;
     const title = document.createElement("span"); title.className = `${NS}-settings-title`; title.textContent = t("settings");
-    const langWrap = document.createElement("div"); langWrap.className = `${NS}-setting-row`; langWrap.dataset.settingKey = "lang";
-    const langInfo = document.createElement("div"); langInfo.className = `${NS}-setting-info`;
-    const langLbl = document.createElement("span"); langLbl.className = `${NS}-setting-label`; langLbl.textContent = t("lang");
-    langInfo.appendChild(langLbl); langWrap.appendChild(langInfo);
-    const langBtn = document.createElement("button"); langBtn.className = `${NS}-lang-btn`;
-    langBtn.textContent = lang === "zh" ? "\u4e2d\u6587 / EN" : "EN / \u4e2d\u6587";
-    langBtn.onclick = (e) => {
-      e.stopPropagation(); lang = lang === "zh" ? "en" : "zh";
-      // Host persists language; bookmarklet uses localStorage.
-      if (HOST.setLang) HOST.setLang(lang);
-      else { try { localStorage.setItem(NS + "-lang", lang); } catch(_) {} }
-      langBtn.textContent = lang === "zh" ? "\u4e2d\u6587 / EN" : "EN / \u4e2d\u6587";
-      applyI18n(); refreshSettingsLabels();
-    };
-    langWrap.appendChild(langBtn);
     const closeBtn = document.createElement("button"); closeBtn.className = `${NS}-settings-close`;
     closeBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
     closeBtn.title = t("close"); closeBtn.onclick = closeSettings;
     hdr.appendChild(title); hdr.appendChild(closeBtn); settingsPanel.appendChild(hdr);
-    settingsPanel.appendChild(langWrap);
     settingsPanel.appendChild(mkToggle("combined"));
     settingsPanel.appendChild(mkToggle("sharingan"));
     if (HOST.pageShortcuts === true) {
@@ -298,13 +253,19 @@
       const row = extra && extra.type === "select" ? mkExtraSelect(extra) : mkExtraToggle(extra);
       if (row) settingsPanel.appendChild(row);
     });
-    // Keep the in-page panel focused on daily use. Lifetime-license management
-    // stays in the options page; Pro shows only the real activation shortcut.
-    settingsPanel.appendChild(HOST.isExtension ? mkProSettingsSummary() : mkSettingsPromo());
     mountSelectorSurface(settingsPanel);
-    refreshProSettingsSummary();
     const cr = chatPanel.getBoundingClientRect();
-    settingsPanel.style.bottom = (window.innerHeight - cr.top + 4) + "px";
+    const above = cr.top - 12, below = window.innerHeight - cr.bottom - 12;
+    if (above >= Math.min(260, window.innerHeight - 24)) {
+      settingsPanel.style.bottom = (window.innerHeight - cr.top + 4) + "px";
+      settingsPanel.style.maxHeight = above + "px";
+    } else if (below > above && below >= 140) {
+      settingsPanel.style.top = (cr.bottom + 4) + "px";
+      settingsPanel.style.maxHeight = below + "px";
+    } else {
+      settingsPanel.style.top = "8px";
+      settingsPanel.style.maxHeight = (window.innerHeight - 16) + "px";
+    }
     settingsPanel.style.right = Math.max(8, window.innerWidth - cr.right) + "px";
   }
 
@@ -319,39 +280,20 @@
       if (k === "lang") return;
       const lbl = row.querySelector(`.${NS}-setting-label`); if (lbl) lbl.textContent = t(settingTextKey(k));
       const desc = row.querySelector(`.${NS}-setting-desc`); if (desc) desc.textContent = t(settingTextKey(k, "Desc"));
+      const input = row.querySelector("input"); if (input) input.setAttribute("aria-label", t(settingTextKey(k)));
+    });
+    (HOST.uiExtras || []).forEach(extra => {
+      const row = Array.from(settingsPanel.querySelectorAll(`.${NS}-setting-row[data-setting-extra]`)).find(node => node.dataset.settingExtra === extra.key);
+      if (!row) return;
+      const lbl = row.querySelector(`.${NS}-setting-label`); if (lbl) lbl.textContent = extraText(extra, "label");
+      const desc = row.querySelector(`.${NS}-setting-desc`); if (desc) desc.textContent = extraText(extra, "desc");
+      const control = row.querySelector("input,select"); if (control) control.setAttribute("aria-label", extraText(extra, "label"));
+      if (control && control.tagName === "SELECT") Array.from(control.options).forEach((option, index) => {
+        const data = extra.options[index]; if (data) option.textContent = data.labelEn || data.value;
+      });
     });
     const stTitle = settingsPanel.querySelector(`.${NS}-settings-title`); if (stTitle) stTitle.textContent = t("settings");
-    const langRow = settingsPanel.querySelector(`.${NS}-setting-row[data-setting-key="lang"]`);
-    if (langRow) { const ll = langRow.querySelector(`.${NS}-setting-label`); if (ll) ll.textContent = t("lang"); }
-    const promo = settingsPanel.querySelector(`.${NS}-settings-promo`);
-    if (promo) {
-      const isExt = !!HOST.isExtension;
-      const tt = promo.querySelector(`.${NS}-settings-promo-title`); if (tt) tt.textContent = t(isExt ? "freePromoTitle" : "proPromoTitle");
-      const dd = promo.querySelector(`.${NS}-settings-promo-desc`); if (dd) dd.textContent = t(isExt ? "freePromoDesc" : "proPromoDesc");
-      const cc = promo.querySelector(`.${NS}-settings-promo-cta`); if (cc) cc.textContent = t(isExt ? "freePromoCta" : "proPromoCta");
-    }
-    refreshProSettingsSummary();
     refreshShortcutRows();
-  }
-
-  // Subtle cross-link shown at the bottom of the settings panel.
-  // Bookmarklet (HOST absent / not extension) → upsell the Pro extension.
-  // Extension (HOST.isExtension) → point to the free bookmarklet on GitHub.
-  function mkSettingsPromo() {
-    const isExt = !!HOST.isExtension;
-    const wrap = document.createElement("a");
-    wrap.className = `${NS}-settings-promo`;
-    wrap.href = isExt ? BOOKMARKLET_URL : EXT_LANDING_URL;
-    wrap.target = "_blank"; wrap.rel = "noopener noreferrer";
-    wrap.onclick = (e) => e.stopPropagation();
-    const title = document.createElement("span"); title.className = `${NS}-settings-promo-title`;
-    title.textContent = t(isExt ? "freePromoTitle" : "proPromoTitle");
-    const desc = document.createElement("span"); desc.className = `${NS}-settings-promo-desc`;
-    desc.textContent = t(isExt ? "freePromoDesc" : "proPromoDesc");
-    const cta = document.createElement("span"); cta.className = `${NS}-settings-promo-cta`;
-    cta.textContent = t(isExt ? "freePromoCta" : "proPromoCta");
-    wrap.appendChild(title); wrap.appendChild(desc); wrap.appendChild(cta);
-    return wrap;
   }
 
   function toggleSettings() {
@@ -432,7 +374,7 @@
         <span class="${NS}-drag-title">
           <span class="${NS}-status-dot"></span>
           <span class="${NS}-status-label">Selecting</span>
-          ${HOST.isExtension ? `<span class="${NS}-pro-badge">Pro</span>` : `<span class="${NS}-version">v${VERSION}</span>`}
+          ${HOST.isExtension ? "" : `<span class="${NS}-version">v${VERSION}</span>`}
         </span>
         <div class="${NS}-panel-actions">
           <button class="${NS}-panel-btn" data-action="settings" title="Settings">${GEAR_SVG}</button>
@@ -507,7 +449,14 @@
       for (let i=0;i<selectedElements.length;i++) {
         const el=selectedElements[i], aiId=el.getAttribute(AI_ID), tag=document.createElement("span");
         tag.className=`${NS}-tag`; const hasNote=annotations.has(aiId);
-        tag.innerHTML=`<span class="${NS}-tag-num">${i+1}</span><span class="${NS}-tag-label">${elementLabel(el)}${hasNote?' \u270e':''}</span><button class="${NS}-tag-x" data-aiid="${aiId}" title="Remove">\u00d7</button>`;
+        tag.innerHTML=`<span class="${NS}-tag-num">${i+1}</span><span class="${NS}-tag-label"></span><button class="${NS}-tag-x" title="Remove">\u00d7</button>`;
+        tag.querySelector(`.${NS}-tag-label`).textContent = elementLabel(el);
+        if (hasNote) {
+          const marker = document.createElement("span"); marker.className = `${NS}-tag-note`; marker.textContent = "\u270e";
+          marker.title = annotations.get(aiId); tag.insertBefore(marker, tag.querySelector(`.${NS}-tag-x`));
+        }
+        tag.querySelector(`.${NS}-tag-x`).dataset.aiid = aiId;
+        tag.querySelector(`.${NS}-tag-x`).setAttribute("aria-label", "Remove " + elementLabel(el));
         const thumb=thumbSrcForElement(el);
         if(thumb){ const ti=document.createElement("img"); ti.className=`${NS}-tag-thumb`; ti.src=thumb; ti.alt=""; tag.insertBefore(ti, tag.firstChild); }
         container.appendChild(tag);

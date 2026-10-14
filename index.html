@@ -1,290 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Selector — Visual Element Picker</title>
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    background:#0a0a0a;color:#d4d4d4;
-    font-family:'SF Mono',Menlo,Monaco,'Cascadia Code',monospace;
-    min-height:100vh;display:flex;align-items:center;justify-content:center;
-  }
-  .wrap{max-width:380px;width:100%;padding:32px 24px}
-  .dot{width:6px;height:6px;background:#4ade80;border-radius:50%;
-       display:inline-block;margin-right:8px;
-       animation:pulse 2.4s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-  .status{display:flex;align-items:center;gap:8px;margin-bottom:32px;font-size:11px;color:#404040;letter-spacing:.1em;text-transform:uppercase}
-  .status-main{display:flex;align-items:center;min-width:0;flex:1}
-  .version{margin-left:8px;color:#333;letter-spacing:0;text-transform:none}
-  .lang-switch{display:flex;align-items:center;gap:6px;letter-spacing:0;text-transform:none}
-  .lang-btn{appearance:none;border:0;background:transparent;color:#333;font:inherit;font-size:10px;cursor:pointer;padding:0}
-  .lang-btn:hover,.lang-btn.active{color:#888}
-  .lang-sep{color:#222}
-  h1{font-size:20px;font-weight:500;color:#fff;margin-bottom:6px;letter-spacing:-.02em}
-  .sub{font-size:12px;color:#505050;margin-bottom:44px;line-height:1.6}
-  .steps{display:flex;flex-direction:column;gap:32px}
-  .step{display:flex;gap:20px}
-  .num{font-size:11px;color:#444;width:16px;flex-shrink:0;padding-top:1px}
-  .step-body{flex:1}
-  .step-title{font-size:12px;color:#888;margin-bottom:10px}
-  .bm{
-    display:inline-block;padding:10px 22px;
-    background:#fff;color:#0a0a0a;
-    border-radius:6px;text-decoration:none;
-    font-size:13px;font-weight:600;letter-spacing:.02em;
-    cursor:grab;transition:background 120ms;
-  }
-  .bm:hover{background:#e8e8e8}
-  .bm:active{cursor:grabbing}
-  .bm.loading{background:#333;color:#666;cursor:wait}
-  .note{font-size:11px;color:#333;margin-top:8px;line-height:1.6}
-  .err{color:#c06000;font-size:11px;margin-top:12px;display:none}
-  code{background:#141414;color:#555;padding:1px 5px;border-radius:3px;font-size:10px}
-  .kbd{display:inline-block;background:#1a1a1a;border:1px solid #2a2a2a;color:#666;
-       padding:1px 5px;border-radius:3px;font-size:10px;font-family:inherit}
-  .footer{margin-top:48px;padding-top:24px;border-top:1px solid #1a1a1a;
-           font-size:10px;color:#2a2a2a}
-  .footer a{color:#444;text-decoration:none}
-  .footer a:hover{color:#888}
-  .pro{
-    position:fixed;right:24px;bottom:24px;width:330px;max-width:calc(100vw - 32px);
-    padding:20px 20px 18px;border:1px solid rgba(255,255,255,.13);border-radius:8px;
-    background:
-      radial-gradient(circle at 1px 1px, rgba(255,255,255,.13) 1px, transparent 0) 0 0/14px 14px,
-      linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.035) 42%, rgba(0,0,0,.18)),
-      #101010;
-    box-shadow:0 20px 60px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.08);
-    overflow:hidden;
-  }
-  .pro::before{
-    content:"";position:absolute;inset:0;pointer-events:none;
-    background:linear-gradient(115deg, rgba(255,255,255,.18), transparent 28%, transparent 72%, rgba(255,255,255,.07));
-    opacity:.42;
-  }
-  .pro-head{display:block;padding-right:74px;margin-bottom:14px}
-  .pro-tag{
-    position:absolute;top:12px;right:12px;padding:3px 8px;border-radius:999px;
-    border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.72);
-    font-size:9px;font-weight:700;color:transparent;text-transform:uppercase;
-    background-image:linear-gradient(110deg,#7a7a7a 0%,#fff 32%,#bdbdbd 52%,#fff 70%,#7a7a7a 100%);
-    background-size:220% 100%;background-clip:text;-webkit-background-clip:text;
-    box-shadow:0 0 18px rgba(255,255,255,.12);
-    animation:pro-shimmer 2.6s linear infinite;z-index:2;
-  }
-  .pro-title{position:relative;z-index:1;font-size:18px;font-weight:700;color:#f5f5f5;line-height:1.2;letter-spacing:-.02em}
-  .pro-desc{position:relative;z-index:1;margin-bottom:14px}
-  .pro-desc ul{display:flex;flex-direction:column;gap:9px;list-style:none}
-  .pro-desc li{position:relative;padding-left:14px;font-size:11px;color:#9a9a9a;line-height:1.65}
-  .pro-desc li::before{content:"";position:absolute;left:0;top:.72em;width:4px;height:4px;border-radius:50%;background:#d8d8d8;box-shadow:0 0 10px rgba(255,255,255,.18)}
-  .pro-desc strong{color:#f2f2f2;font-weight:650}
-  .pro-link{
-    position:relative;z-index:1;display:inline-flex;align-items:center;gap:4px;
-    padding:6px 9px;border:1px solid rgba(255,255,255,.12);border-radius:6px;
-    background:rgba(255,255,255,.045);font-size:11px;font-weight:650;color:#e9e9e9;text-decoration:none;
-    cursor:pointer;transition:border-color .18s ease,background .18s ease;
-  }
-  .pro-link:hover{border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.08)}
-  @keyframes pro-shimmer{to{background-position:-220% 0}}
-  @media (max-width:760px){.pro{position:static;width:auto;margin-top:44px;max-width:none}}
-  @media (prefers-reduced-motion: reduce){.pro-tag{animation:none}}
-</style>
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  var version = "0.3.9";
-  var base = location.href.replace(/[^/]*$/, "");
-  var link = document.getElementById("bm-link");
-  var dict = {
-    en: {
-      title: "Selector — Visual Element Picker",
-      status: "install",
-      subtitle: "Point at any element. Tell your AI what to change.",
-      step1Title: "Drag to bookmarks bar",
-      setup: "one-time setup",
-      error: "Failed to load assets. Make sure this page is served over HTTP(S).",
-      step2Title: "Click the bookmark on any page",
-      works: "Works everywhere — <code>localhost</code> · React · Next.js · production URLs",
-      step3Title: "Select → Copy → Paste into your AI",
-      copyNote: "<span class=\"kbd\">⌘C</span> copies a structured prompt with element metadata<br><span class=\"kbd\">⌘M</span> copies the selected content as Markdown",
-      proTag: "pro",
-      proTitle: "Selector Pro",
-      proDesc: "<ul><li><strong>Always ready:</strong> customizable shortcut, toolbar and right-click activation; keeps working after page changes.</li><li><strong>Complete capture:</strong> full-element screenshots without the browser share picker, copied and saved automatically.</li><li><strong>Reliable output:</strong> cross-origin images, CSS and fonts, synced settings and real saved-file paths.</li></ul>",
-      proLink: "See a stronger Selector →",
-    },
-    zh: {
-      title: "Selector — 可视化元素选择器",
-      status: "安装",
-      subtitle: "选中页面元素，把修改意图准确交给 AI。",
-      step1Title: "拖到书签栏",
-      setup: "只需要设置一次",
-      error: "资源加载失败。请确认这个页面通过 HTTP(S) 打开。",
-      step2Title: "在任意页面点击书签",
-      works: "支持常见页面 — <code>localhost</code> · React · Next.js · 线上环境",
-      step3Title: "选择 → 复制 → 粘贴给 AI",
-      copyNote: "<span class=\"kbd\">⌘C</span> 复制带元素上下文的结构化提示词<br><span class=\"kbd\">⌘M</span> 复制选中内容为 Markdown",
-      proTag: "pro",
-      proTitle: "Selector Pro",
-      proDesc: "<ul><li><strong>随时可用：</strong>自定义快捷键、工具栏和右键唤起，页面跳转后继续工作。</li><li><strong>完整截图：</strong>不弹系统共享框，直接截完整元素，并自动复制与保存。</li><li><strong>可靠输出：</strong>补全跨域图片、CSS、字体，同步设置，并返回真实文件路径。</li></ul>",
-      proLink: "看看更强的 selector →",
-    },
-  };
-  var lang = loadLang();
-
-  function loadLang() {
-    try {
-      var stored = localStorage.getItem("selector-install-lang");
-      if (stored === "zh" || stored === "en") return stored;
-    } catch (_) {}
-    return /^zh\b/i.test(navigator.language || "") ? "zh" : "en";
-  }
-
-  function setLang(nextLang) {
-    lang = nextLang === "zh" ? "zh" : "en";
-    try { localStorage.setItem("selector-install-lang", lang); } catch (_) {}
-    applyI18n();
-  }
-
-  function applyI18n() {
-    var texts = dict[lang] || dict.en;
-    document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
-    document.title = texts.title;
-    document.querySelectorAll("[data-i18n]").forEach(function (el) {
-      var key = el.getAttribute("data-i18n");
-      if (texts[key]) el.innerHTML = texts[key];
-    });
-    document.querySelectorAll("[data-lang]").forEach(function (btn) {
-      btn.classList.toggle("active", btn.getAttribute("data-lang") === lang);
-    });
-  }
-
-  document.querySelectorAll("[data-lang]").forEach(function (btn) {
-    btn.addEventListener("click", function () { setLang(btn.getAttribute("data-lang")); });
-  });
-  document.querySelectorAll("[data-version]").forEach(function (el) {
-    el.textContent = "v" + version;
-  });
-  applyI18n();
-
-  function fetchAsset(path, kind) {
-    var url = base + path + (path.indexOf("?") === -1 ? "?" : "&") + "v=" + encodeURIComponent(version);
-    return fetch(url, { cache: "no-store" }).then(function (r) {
-      if (!r.ok) throw new Error(path + " returned HTTP " + r.status);
-      return r.text();
-    }).then(function (text) {
-      if (kind === "script" && /^\s*</.test(text)) {
-        throw new Error(path + " returned HTML instead of JavaScript");
-      }
-      return text;
-    });
-  }
-
-  var editorAssets = [
-    "assets/payload-00.css",
-    "assets/payload-01.css",
-    "assets/payload-02.css",
-    "assets/payload-03.css",
-    "assets/payload-04.css",
-    "assets/payload-05.css",
-    "assets/payload-06.css",
-  ];
-
-  function decodePayload(encoded) {
-    var binary = atob(encoded.replace(/\s+/g, ""));
-    var bytes = new Uint8Array(binary.length);
-    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new TextDecoder("utf-8").decode(bytes);
-  }
-
-  Promise.all(
-    [fetchAsset("assets/editor.css", "style")].concat(
-      editorAssets.map(function (path) { return fetchAsset(path, "script"); })
-    )
-  )
-  .then(function (results) {
-    var css = results[0];
-    var js  = results.slice(1).map(decodePayload).join("");
-
-    // Inject CSS via <style> element, but run JS directly in the
-    // bookmarklet context — no <script> element needed.
-    // This bypasses CSP script-src restrictions (GitHub, etc.)
-    // because javascript: URLs run as user actions.
-    var cssInjector = "(function(){"
-      + "var s=document.createElement('style');"
-      + "s.textContent=" + JSON.stringify(css) + ";"
-      + "document.head.appendChild(s);"
-      + "})();";
-    var code = cssInjector + js;
-
-    link.href = "javascript:" + encodeURIComponent(code);
-    link.classList.remove("loading");
-  })
-  .catch(function () {
-    document.getElementById("bm-err").style.display = "block";
-    link.classList.remove("loading");
-  });
-});
-</script>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Selector Local - playground</title>
+  <link rel="icon" href="assets/favicon.svg"><link rel="stylesheet" href="assets/editor.css">
+  <style>
+    :root { color-scheme: dark; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; background: #0a0a0a; color: #ececec; font-size: 13px; }
+    * { box-sizing: border-box; } body { margin: 0; } main { max-width: 940px; margin: auto; padding: 56px 36px 80px; }
+    header { display: flex; align-items: center; gap: 10px; margin-bottom: 68px; } header img { width: 23px; } header strong { font-size: 15px; font-weight: 600; } .badge { font-size: 10px; color: #aaa; border: 1px solid #444; border-radius: 4px; padding: 3px 6px; } header a { margin-left: auto; color: #777; font-size: 11px; }
+    h1 { font-size: clamp(30px, 5vw, 48px); font-weight: 500; letter-spacing: -2px; margin: 0 0 18px; line-height: 1.2; } .intro { color: #8b8b8b; line-height: 1.8; max-width: 540px; margin-bottom: 26px; }
+    button { font: inherit; cursor: pointer; } #launch { background: #ededed; color: #141414; border: 0; border-radius: 6px; padding: 12px 19px; font-weight: 600; } #launch:hover { background: white; } .keyhint { margin-left: 14px; color: #666; font-size: 11px; } kbd { border: 1px solid #444; padding: 2px 5px; border-radius: 3px; font-family: inherit; }
+    .workspace { margin-top: 45px; border: 1px solid #333; border-radius: 10px; overflow: hidden; } .workspace-bar { padding: 13px 20px; background: #191919; border-bottom: 1px solid #303030; color: #888; font-size: 11px; display: flex; justify-content: space-between; } .workspace-bar span:last-child { color: #5da782; }
+    .specimen { background: #141414; padding: 36px; } .specimen h2 { font-family: system-ui, sans-serif; font-size: 24px; font-weight: 500; letter-spacing: -.6px; margin: 0 0 10px; } .specimen p { color: #999; line-height: 1.8; margin: 0; max-width: 510px; } .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 26px; } article { border: 1px solid #383838; border-radius: 7px; padding: 22px; background: #1b1b1b; } article h3 { margin: 0 0 11px; font-size: 14px; font-weight: 500; } article p { font-size: 11px; } article button { margin-top: 22px; background: #292929; border: 1px solid #484848; color: #ddd; padding: 9px 13px; border-radius: 4px; font-size: 11px; }
+    .instructions { color: #777; margin: 16px 0 46px; font-size: 11px; line-height: 1.9; } .instructions strong { color: #bbb; font-weight: 400; } .install { border-top: 1px solid #292929; padding-top: 28px; } .install h2 { font-size: 14px; font-weight: 500; margin: 0 0 16px; } .install p { color: #888; font-size: 11px; line-height: 1.9; max-width: 610px; } .install a { color: #ccc; } ol { padding-left: 22px; color: #aaa; font-size: 11px; line-height: 2.3; } code { background: #222; border-radius: 3px; padding: 3px 6px; font-family: inherit; }
+    details { margin-top: 36px; color: #777; border-top: 1px solid #222; padding-top: 20px; } summary { cursor: pointer; font-size: 11px; } .long-content { margin-top: 20px; background: linear-gradient(#1c2824, #171f37); border: 1px solid #3c5146; min-height: 1800px; padding: 30px; display: flex; flex-direction: column; justify-content: space-between; } .long-content p { font-size: 18px; color: #c1d4cc; }
+    footer { color: #555; font-size: 10px; margin-top: 50px; } a { color: inherit; } :focus-visible { outline: 2px solid #a6d9bd; outline-offset: 4px; }
+    textarea { width: 100%; min-height: 180px; margin-top: 16px; padding: 16px; color: #bbb; background: #151515; border: 1px solid #333; border-radius: 6px; font: 11px/1.7 ui-monospace, monospace; resize: vertical; }
+    @media(max-width: 600px) { main { padding: 28px 22px 60px; } header { margin-bottom: 48px; } .cards { grid-template-columns: 1fr; } .specimen { padding: 24px; } h1 { letter-spacing: -1px; } }
+    @media(prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+  </style>
 </head>
-<body>
-<div class="wrap">
-  <div class="status">
-    <span class="status-main"><span class="dot"></span><span data-i18n="status">install</span> <span class="version" data-version></span></span>
-    <span class="lang-switch" aria-label="Language">
-      <button class="lang-btn" type="button" data-lang="en">EN</button>
-      <span class="lang-sep">/</span>
-      <button class="lang-btn" type="button" data-lang="zh">中文</button>
-    </span>
-  </div>
-  <h1>Selector</h1>
-  <p class="sub" data-i18n="subtitle">Point at any element. Tell your AI what to change.</p>
-  <div class="steps">
-    <div class="step">
-      <span class="num">01</span>
-      <div class="step-body">
-        <div class="step-title" data-i18n="step1Title">Drag to bookmarks bar</div>
-        <a class="bm loading" id="bm-link" href="#">Selector</a>
-        <p class="note" data-i18n="setup">one-time setup</p>
-        <p class="err" id="bm-err" data-i18n="error">Failed to load assets. Make sure this page is served over HTTP(S).</p>
-      </div>
+<body><main>
+  <header><img src="assets/favicon.svg" alt=""><strong>Selector</strong><span class="badge">Local</span><a href="https://github.com/oil-oil/selector">Based on Selector ↗</a></header>
+  <h1>Point at what you mean.</h1>
+  <p class="intro">Pick an element. Add your instructions. Copy precise page context into Codex, Claude Code, Cursor, or your AI of choice.</p>
+  <button id="launch">Open Selector</button><span class="keyhint">or press <kbd>F2</kbd></span>
+  <section class="workspace" aria-label="Practice page"><div class="workspace-bar"><span>Playground</span><span>Try selecting anything below</span></div>
+    <div class="specimen"><h2 id="sample-heading">A little less explaining.</h2><p>Select this heading, one of the cards, or a button. The picker knows its location, styles, accessible name, and how to find it again.</p>
+      <div class="cards"><article data-testid="context-card"><h3>Give your AI the context</h3><p>A verified locator, nearby content and your instructions, together in one prompt.</p><button data-testid="sample-button">Get started</button></article><article data-testid="capture-card"><h3>Keep the whole picture</h3><p>Full-element captures, automatically saved with their real file paths.</p><button aria-label="View capture details">See the details</button></article></div>
     </div>
-    <div class="step">
-      <span class="num">02</span>
-      <div class="step-body">
-        <div class="step-title" data-i18n="step2Title">Click the bookmark on any page</div>
-        <p class="note" data-i18n="works">Works everywhere &mdash; <code>localhost</code> &middot; React &middot; Next.js &middot; production URLs</p>
-      </div>
-    </div>
-    <div class="step">
-      <span class="num">03</span>
-      <div class="step-body">
-        <div class="step-title" data-i18n="step3Title">Select &rarr; Copy &rarr; Paste into your AI</div>
-        <p class="note" data-i18n="copyNote">
-          <span class="kbd">&#8984;C</span> copies a structured prompt with element metadata<br>
-          Paste into Claude Code &middot; Codex &middot; Cursor &middot; any AI assistant
-        </p>
-      </div>
-    </div>
-  </div>
-  <div class="pro">
-    <div class="pro-head">
-      <span class="pro-tag" data-i18n="proTag">pro</span>
-      <span class="pro-title" data-i18n="proTitle">Browser extension — same UX, more power</span>
-    </div>
-    <div class="pro-desc" data-i18n="proDesc">
-      <ul>
-        <li><strong>Always ready:</strong> customizable shortcut and page-change continuity.</li>
-        <li><strong>Complete capture:</strong> full-element screenshots without the share picker.</li>
-        <li><strong>Reliable output:</strong> cross-origin assets, synced settings and real file paths.</li>
-      </ul>
-    </div>
-    <a class="pro-link" href="https://selector-pro.org/" target="_blank" rel="noopener" data-i18n="proLink">See a stronger Selector &rarr;</a>
-  </div>
-  <div class="footer">
-    <a href="https://github.com/oil-oil/selector" target="_blank">GitHub</a> · <span data-version></span>
-  </div>
-</div>
-</body>
+  </section>
+  <p class="instructions"><strong>Click</strong> to select · <strong>Shift + click</strong> for multiple · <strong>↑ ↓ ← →</strong> to navigate · <strong>✎</strong> to annotate<br><strong>⌘C / Ctrl+C</strong> copies context · <strong>⌘M / Ctrl+M</strong> previews Markdown · <strong>Esc</strong> clears selection</p>
+  <details><summary>Inspect copied context</summary><textarea aria-label="Paste copied context" placeholder="Paste your copied prompt here to inspect it."></textarea></details>
+  <section class="install" id="install"><h2>Use it on any page.</h2><p>Load the extension into Chrome to enable activation across tabs, complete screenshots without a share dialog, automatic PNG saves, and synced preferences.</p><ol><li>Open <code>chrome://extensions</code> and turn on Developer mode.</li><li>Choose <strong>Load unpacked</strong>, then select the <code>dist/extension</code> folder.</li><li>Pin Selector Local. Press <kbd>F2</kbd> on a page to start picking.</li></ol><p><a href="selector-local.zip" download>Download extension ZIP</a> · <a href="extension/INSTALL.md">Installation and shortcuts</a></p></section>
+  <details><summary>Long element for checking full screenshots</summary><section class="long-content" data-testid="long-element"><p>Beginning of the selected element.</p><p>Middle of the selected element.</p><p>End of the selected element.</p></section></details>
+  <footer>Independent personal extension · Picker by <a href="https://github.com/oil-oil/selector">oil-oil</a> · MIT licensed</footer>
+</main><script src="demo.js"></script></body>
 </html>

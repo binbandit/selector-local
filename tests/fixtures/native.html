@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Selector native checks</title>
+<style>
+  * { box-sizing:border-box; } body { margin:0; background:#e9edf1; color:#17232d; font:16px/1.6 system-ui,sans-serif; } main { max-width:860px; margin:32px auto; padding:0 28px; } header { margin-bottom:28px; } h1 { font-size:30px; margin:0 0 8px; } a,button { font:inherit; color:inherit; } button { cursor:pointer; border:1px solid #688399; border-radius:6px; padding:10px 18px; background:white; } .long { display:flex; flex-direction:column; justify-content:space-between; height:2200px; padding:28px; border:8px solid #163c55; background:linear-gradient(#d8edff,#d7efdf); border-radius:10px; } .long h2 { margin:0; font-size:30px; } .checkpoint { border:2px solid #163c55; padding:24px; background:white; } textarea { width:100%; min-height:180px; margin-top:16px; padding:12px; font:12px/1.6 monospace; } footer { margin-top:28px; } details { margin:20px 0; } .sticky { position:fixed; right:12px; top:12px; padding:5px 10px; background:#17232d; color:white; font-size:11px; border-radius:4px; }
+</style></head><body>
+<aside class="sticky">Fixed page decoration</aside>
+<main><header><h1>Native extension checks</h1><p>Press F2 to open the installed extension. Select the long card and capture it.</p><button data-testid="native-button">Exact button target</button> <a href="?page=2" id="next-page">Navigate to next page</a></header>
+<section class="long" data-testid="native-long-element" aria-label="Long capture card"><h2>Beginning of the complete element</h2><div class="checkpoint">Middle checkpoint: this should appear once.</div><h2>End of the complete element</h2></section>
+<footer><details><summary>Clipboard verification</summary><textarea aria-label="Paste captured context" placeholder="Close the picker and paste the copied context here."></textarea></details><a href="/">Back to playground</a></footer>
+</main></body></html>
